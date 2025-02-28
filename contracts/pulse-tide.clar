@@ -6,6 +6,8 @@
 (define-constant err-no-event (err u101))
 (define-constant err-already-voted (err u102))
 (define-constant err-invalid-rating (err u103))
+(define-constant err-event-inactive (err u104))
+(define-constant err-invalid-timestamp (err u105))
 
 ;; Data Variables
 (define-map events 
@@ -13,10 +15,12 @@
   { 
     creator: principal,
     title: (string-ascii 64),
+    description: (string-ascii 256),
     timestamp: uint,
     active: bool,
     total-ratings: uint,
-    cumulative-score: uint
+    cumulative-score: uint,
+    weighted-score: uint
   }
 )
 
@@ -28,7 +32,7 @@
 (define-data-var event-counter uint u0)
 
 ;; Public Functions
-(define-public (create-event (title (string-ascii 64)))
+(define-public (create-event (title (string-ascii 64)) (description (string-ascii 256)))
   (let
     ((event-id (var-get event-counter)))
     (begin
@@ -38,10 +42,12 @@
         { 
           creator: tx-sender,
           title: title,
+          description: description,
           timestamp: block-height,
           active: true,
           total-ratings: u0,
-          cumulative-score: u0
+          cumulative-score: u0,
+          weighted-score: u0
         }
       )
       (var-set event-counter (+ event-id u1))
@@ -50,10 +56,42 @@
   )
 )
 
+(define-public (update-event (event-id uint) (title (string-ascii 64)) (description (string-ascii 256)))
+  (let ((event (unwrap! (map-get? events {event-id: event-id}) err-no-event)))
+    (begin
+      (asserts! (is-eq tx-sender contract-owner) err-not-owner)
+      (map-set events
+        {event-id: event-id}
+        (merge event
+          {
+            title: title,
+            description: description
+          }
+        )
+      )
+      (ok true)
+    )
+  )
+)
+
+(define-public (deactivate-event (event-id uint))
+  (let ((event (unwrap! (map-get? events {event-id: event-id}) err-no-event)))
+    (begin
+      (asserts! (is-eq tx-sender contract-owner) err-not-owner)
+      (map-set events
+        {event-id: event-id}
+        (merge event {active: false})
+      )
+      (ok true)
+    )
+  )
+)
+
 (define-public (submit-feedback (event-id uint) (rating uint))
   (let
     ((event (unwrap! (map-get? events {event-id: event-id}) err-no-event)))
     (begin
+      (asserts! (get active event) err-event-inactive)
       (asserts! (>= rating u1) err-invalid-rating)
       (asserts! (<= rating u5) err-invalid-rating)
       (asserts! 
@@ -69,7 +107,11 @@
         (merge event
           {
             total-ratings: (+ (get total-ratings event) u1),
-            cumulative-score: (+ (get cumulative-score event) rating)
+            cumulative-score: (+ (get cumulative-score event) rating),
+            weighted-score: (calculate-weighted-score 
+              (+ (get total-ratings event) u1)
+              (+ (get cumulative-score event) rating)
+            )
           }
         )
       )
@@ -95,4 +137,11 @@
 
 (define-read-only (get-user-feedback (event-id uint) (user principal))
   (map-get? user-feedback {event-id: event-id, user: user})
+)
+
+(define-private (calculate-weighted-score (total-ratings uint) (cumulative-score uint))
+  (if (< total-ratings u5)
+    (* cumulative-score u80)
+    (* cumulative-score u100)
+  )
 )
