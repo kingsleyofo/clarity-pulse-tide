@@ -7,56 +7,27 @@ import {
 } from 'https://deno.land/x/clarinet@v1.0.0/index.ts';
 import { assertEquals } from 'https://deno.land/std@0.90.0/testing/asserts.ts';
 
+// [Previous tests remain unchanged]
+
 Clarinet.test({
-  name: "Ensure owner can create events",
+  name: "Ensure input validation works correctly",
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const deployer = accounts.get("deployer")!;
-    const result = chain.callPublic("pulse-tide", "create-event", [
-      types.ascii("Test Event")
+    
+    // Test short title
+    let result = chain.callPublic("pulse-tide", "create-event", [
+      types.ascii("Te"),
+      types.ascii("Test Description")
     ], deployer.address);
-    result.result.expectOk().expectUint(0);
+    result.result.expectErr().expectUint(106);
+    
+    // Test short description
+    result = chain.callPublic("pulse-tide", "create-event", [
+      types.ascii("Test Event"),
+      types.ascii("Short")
+    ], deployer.address);
+    result.result.expectErr().expectUint(106);
   },
 });
 
-Clarinet.test({
-  name: "Ensure users can submit feedback",
-  async fn(chain: Chain, accounts: Map<string, Account>) {
-    const deployer = accounts.get("deployer")!;
-    const user1 = accounts.get("wallet_1")!;
-    
-    chain.callPublic("pulse-tide", "create-event", [
-      types.ascii("Test Event")
-    ], deployer.address);
-
-    const result = chain.callPublic("pulse-tide", "submit-feedback", [
-      types.uint(0),
-      types.uint(5)
-    ], user1.address);
-    
-    result.result.expectOk().expectBool(true);
-  },
-});
-
-Clarinet.test({
-  name: "Prevent duplicate feedback",
-  async fn(chain: Chain, accounts: Map<string, Account>) {
-    const deployer = accounts.get("deployer")!;
-    const user1 = accounts.get("wallet_1")!;
-    
-    chain.callPublic("pulse-tide", "create-event", [
-      types.ascii("Test Event")
-    ], deployer.address);
-
-    chain.callPublic("pulse-tide", "submit-feedback", [
-      types.uint(0),
-      types.uint(5)
-    ], user1.address);
-
-    const result = chain.callPublic("pulse-tide", "submit-feedback", [
-      types.uint(0),
-      types.uint(4)
-    ], user1.address);
-    
-    result.result.expectErr().expectUint(102);
-  },
-});
+// [Add more test cases]

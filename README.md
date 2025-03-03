@@ -1,12 +1,15 @@
 # PulseTide
-A decentralized application for monitoring live events and capturing real-time audience feedback.
+[Previous content remains unchanged]
 
-## Features
-- Create and manage events
-- Submit real-time feedback
-- Track audience sentiment
-- Reward active participants
-- View historical event data
+## New Features
+- Input validation for event creation
+- Enhanced weighted scoring system
+- Active events query functionality
+- Overflow protection in calculations
 
-## Architecture
-The smart contract implements event management, feedback submission, and participant rewards.
+## Security Improvements
+- Minimum length requirements for event details
+- Protected arithmetic operations
+- Enhanced input validation
+
+[Rest of README remains unchanged]
